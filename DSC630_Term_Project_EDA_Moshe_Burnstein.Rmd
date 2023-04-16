@@ -1,0 +1,402 @@
+---
+title: "DSC 630 Term Project EDA"
+author: "Moshe Burnstein"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load in data and check structure
+```{r}
+bank_df <- read.csv('bank-additional-full.csv', sep=';', header=TRUE)
+str(bank_df)
+```
+
+```{r}
+summary(bank_df)
+```
+
+Visualize dataset
+```{r}
+bank_df
+```
+
+View job counts
+```{r}
+library(vctrs)
+job_counts <-vec_count(bank_df$job)
+job_counts
+```
+
+```{r}
+marital_counts <-vec_count(bank_df$marital)
+marital_counts
+```
+
+Education counts
+```{r}
+edu_counts <- vec_count(bank_df$education)
+edu_counts
+```
+
+Default counts
+```{r}
+default_counts <- vec_count(bank_df$default)
+default_counts
+```
+
+Housing counts
+```{r}
+housing_counts <- vec_count(bank_df$housing)
+housing_counts
+```
+
+View loan counts
+```{r}
+loan_counts <- vec_count(bank_df$loan)
+loan_counts
+```
+
+Contact counts
+```{r}
+contact_counts <- vec_count(bank_df$contact)
+contact_counts
+```
+
+Month counts
+```{r}
+month_counts <- vec_count(bank_df$month)
+month_counts
+```
+
+Day counts
+```{r}
+day_counts <- vec_count(bank_df$day_of_week)
+day_counts
+```
+
+Campaign counts
+```{r}
+campaign_counts <- vec_count(bank_df$campaign)
+campaign_counts
+```
+
+Target counts
+```{r}
+subscriber_counts <- vec_count(bank_df$y)
+subscriber_counts
+percent_subscribed <- 4640/36548*100
+percent_subscribed
+```
+The target variable is imbalanced. There are 36,548 who declined to subscribe, and
+4,640 who subscribed. Only 12.7% subscribed.
+
+Create new df for subscribers and a separate df for non-subscribers.
+```{r}
+yes_subscribe_df <- bank_df[bank_df$y == 'yes',]
+yes_subscribe_df
+```
+
+```{r}
+non_subscribe_df <- bank_df[bank_df$y != 'yes',]
+non_subscribe_df
+```
+
+
+Check stats of subscribers
+```{r}
+library(pastecs)
+stat.desc(yes_subscribe_df)
+```
+
+Compare stats with non-subscribers
+```{r}
+stat.desc(non_subscribe_df)
+```
+Visualize the distributions of age in the entire df, in the subscribe df, and in 
+the non-subscribe df.
+```{r}
+hist(bank_df$age)
+hist(yes_subscribe_df$age)
+hist(non_subscribe_df$age)
+```
+One must take note that while the x-axis is on the same scale throughout, aside
+from no 100 year-old outliers in the non-subscribe df, the scale of the y-axis 
+frequency is up to 1,000, and not 8,000. This is because there are only a fraction
+of the number of observations in the subscribe df as there are in the entire df, 
+or in the non-subscribe df. The shape of the distribution throughout is similar.
+Age does not display a difference in subscribing or not.
+
+
+
+```{r fig.height = 5, fig.width = 10, warning=FALSE}
+library(ggplot2)
+ggplot(bank_df, aes(x=job)) + geom_bar() + labs(title = "Barplot of Job") + 
+  theme(plot.title = element_text(size = 30))
+ggplot(yes_subscribe_df, aes(x=job)) + geom_bar() + labs(title = "Barplot of Job") + 
+  theme(plot.title = element_text(size = 30))
+
+ggplot(non_subscribe_df, aes(x=job)) + geom_bar() + labs(title = "Barplot of Job") + 
+  theme(plot.title = element_text(size = 30))
+
+vec_count(bank_df$job)
+vec_count(yes_subscribe_df$job)
+vec_count(non_subscribe_df$job)
+```
+
+```{r}
+ggplot(bank_df, aes(x=marital)) + geom_bar()
+ggplot(yes_subscribe_df, aes(x=marital)) + geom_bar()
+ggplot(non_subscribe_df, aes(x=marital)) + geom_bar()
+```
+
+```{r fig.height = 5, fig.width = 10}
+ggplot(bank_df, aes(x=education)) + geom_bar()
+ggplot(yes_subscribe_df, aes(x=education)) + geom_bar()
+ggplot(non_subscribe_df, aes(x=education)) + geom_bar()
+```
+            
+```{r}
+ggplot(bank_df, aes(x=month)) + geom_bar()
+ggplot(yes_subscribe_df, aes(x=month)) + geom_bar()
+ggplot(non_subscribe_df, aes(x=month)) + geom_bar()
+```
+
+            
+```{r}
+ggplot(bank_df, aes(x=day_of_week)) + geom_bar()
+ggplot(yes_subscribe_df, aes(x=day_of_week)) + geom_bar()
+ggplot(non_subscribe_df, aes(x=day_of_week)) + geom_bar()
+```
+            
+
+
+ 
+```{r warning=FALSE}
+# train the model
+library(dplyr)
+no_target_bank_df <- select(bank_df, -y)
+
+```
+
+# Installing package
+install.packages("caTools")	 # For sampling the dataset
+install.packages("randomForest") # For implementing random forest algorithm
+
+# Loading package
+library(caTools)
+library(randomForest)
+
+# Splitting data in train and test data
+split <- sample.split(iris, SplitRatio = 0.7)
+split
+
+train <- subset(iris, split == "TRUE")
+test <- subset(iris, split == "FALSE")
+
+# Fitting Random Forest to the train dataset
+set.seed(120) # Setting seed
+classifier_RF = randomForest(x = train[-5],
+							y = train$Species,
+							ntree = 500)
+
+classifier_RF
+
+# Predicting the Test set results
+y_pred = predict(classifier_RF, newdata = test[-5])
+
+# Confusion Matrix
+confusion_mtx = table(test[, 5], y_pred)
+confusion_mtx
+
+# Plotting model
+plot(classifier_RF)
+
+# Importance plot
+importance(classifier_RF)
+
+# Variable importance plot
+varImpPlot(classifier_RF)
+
+```{r warning=FALSE}
+library(fastDummies)
+bank_df_dummies <- dummy_cols(bank_df)
+```
+
+
+
+
+
+```{r warning=FALSE}
+# Loading package
+library(caTools)
+library(randomForest)
+
+```
+
+```{r}
+# Splitting data in train and test data
+split <- sample.split(bank_df_dummies, SplitRatio = 0.7)
+split
+
+```
+
+```{r}
+
+train <- subset(bank_df_dummies, split == "TRUE")
+test <- subset(bank_df_dummies, split == "FALSE")
+
+```
+
+```{r warning=FALSE}
+# Fitting Random Forest to the train dataset
+set.seed(120) # Setting seed
+classifier_RF = randomForest(x = train[-64],
+							y = train$y_yes,
+							keep.forest = TRUE,
+							ntree = 500)
+```
+
+```{r}
+classifier_RF
+```
+pred_rf <- predict(rf, test_set)
+confusionMatrix(pred_rf, test$y_yes)
+
+
+```{r}
+help("randomForest")
+```
+
+
+```{r}
+# Importance plot
+importance(classifier_RF)
+```
+
+```{r fig.width=10, fig.height=10}
+# Variable importance plot
+varImpPlot(classifier_RF)
+```
+
+
+# ensure the results are repeatable
+set.seed(7)
+# load the library
+library(mlbench)
+library(caret)
+# load the data
+data(PimaIndiansDiabetes)
+# calculate correlation matrix
+correlationMatrix <- cor(PimaIndiansDiabetes[,1:8])
+# summarize the correlation matrix
+print(correlationMatrix)
+# find attributes that are highly corrected (ideally >0.75)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.5)
+# print indexes of highly correlated attributes
+print(highlyCorrelated)
+
+```{r warning=FALSE}
+# ensure the results are repeatable
+set.seed(7)
+library(caret)
+# correlationMatrix <- cor(bank_df_dummies[,1:62])
+
+```
+
+
+```{r}
+# summarize the correlation matrix
+# print(correlationMatrix)
+```
+
+```{r}
+# find attributes that are highly corrected (ideally >0.75)
+# highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+```
+
+```{r}
+# print indexes of highly correlated attributes
+# print(highlyCorrelated)
+```
+
+```{r}
+# Try cutoff of 90%
+# highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.90)
+# highlyCorrelated
+```
+
+```{r}
+# highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.99, verbose = TRUE,
+                                   # names = TRUE)
+# highlyCorrelated
+```
+
+Perform partial correlation
+```{r warning=FALSE}
+# library(ppcor)
+# pcor(bank_df_dummies)
+```
+
+Try Spearman Rank Correlation between age and subscribe
+```{r warning=TRUE}
+cor.test(bank_df_dummies$age, bank_df_dummies$y_no, method = 'spearman')
+```
+
+```{r}
+cor.test(bank_df_dummies$age, bank_df_dummies$y_no)
+```
+
+```{r}
+tao <- cor(bank_df_dummies$age, bank_df_dummies$y_no, method = 'kendall')
+cat("Kendall correlation coefficient is:", tao)
+```
+```{r}
+# str(bank_df_dummies)
+```
+
+
+
+Fit General Linear Model
+```{r}
+bank_df_dummies[,-64] <- scale(bank_df_dummies[,-64])
+```
+
+
+```{r}
+#make this example reproducible
+set.seed(136)
+
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample <- sample(c(TRUE, FALSE), nrow(bank_df_dummies), replace=TRUE, prob=c(0.7,0.3))
+train <- data.frame(bank_df_dummies[sample, ])
+test <- data.frame(bank_df_dummies[!sample, ])  
+```
+
+```{r warning=FALSE}
+#fit logistic regression model
+glm_model <- glm(y_no~.,data=train, family="binomial")
+
+#disable scientific notation for model summary
+options(scipen=999)
+
+#view model summary
+summary(glm_model)
+```
+
+
+Compute McFadden's R-squared
+```{r}
+pscl::pR2(glm_model)["McFadden"]
+```
+Values greater than 0.40 are indicators of good model fit. 
+
+```{r warning=FALSE}
+library(caret)
+varImp(glm_model)
+```
+
+

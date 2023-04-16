@@ -1,0 +1,347 @@
+---
+title: "DSC630 3.2 Assignment MLB Attendance"
+author: "Moshe Burnstein"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Load Dodgers data
+```{r}
+dodgers_df <- read.csv('dodgers-2022.csv')
+```
+View data
+```{r}
+head(dodgers_df)
+```
+Inspect data
+```{r}
+str(dodgers_df)
+```
+Check for unique values
+```{r}
+unique(dodgers_df)
+```
+```{r}
+unique(dodgers_df$opponent)
+unique(dodgers_df$skies)
+```
+Check stats on numericals
+```{r}
+library(pastecs)
+stat.desc(dodgers_df, basic = FALSE, norm = TRUE)
+stat.desc(dodgers_df)
+```
+Arrange attendance in ascending order
+```{r}
+
+library(dplyr)
+dodgers_df.month <- arrange(dodgers_df, attend)
+dodgers_df.month
+```
+
+Create variables/dfs for small attendance, medium attendance, and large attendance.
+
+```{r}
+small_attend_df <- dodgers_df %>% filter(24000 < attend  & attend < 35000)
+small_attend_df
+```
+
+```{r}
+med_attend_df <- dodgers_df %>% filter(attend >= 35000 & attend < 45000)
+med_attend_df
+```
+
+```{r}
+large_attend_df <- dodgers_df %>% filter(attend >= 45000)
+large_attend_df
+```
+
+Check value counts for different size audiences
+```{r}
+library(vctrs)
+vec_count(small_attend_df$skies)
+vec_count(med_attend_df$skies)
+vec_count(large_attend_df$skies)
+
+```
+The preponderance of days provided clear skies, across small, medium, and large attendance.
+```{r}
+vec_count(small_attend_df$day_night)
+vec_count(med_attend_df$day_night)
+vec_count(large_attend_df$day_night)
+```
+The vast majority of games across different sized attendance were night games...
+no noticeable affect on attendance.
+
+```{r}
+vec_count(small_attend_df$cap)
+vec_count(med_attend_df$cap)
+vec_count(large_attend_df$cap)
+```
+Cap giveaways were clearly not a driver of attendance. There are 0 cap giveaway
+games in the large attendance group.
+
+```{r}
+vec_count(small_attend_df$shirt)
+vec_count(med_attend_df$shirt)
+vec_count(large_attend_df$shirt)
+```
+Only 2 out of the 23 largest attendances had shirt giveaways, an insignificant number.
+
+```{r}
+vec_count(small_attend_df$fireworks)
+vec_count(med_attend_df$fireworks)
+vec_count(large_attend_df$fireworks)
+```
+The medium-sized crowds has the greatest number of fireworks presentations for games.
+One can posit that while fireworks shows do not equate with large crowds, they may
+boost otherwise small crowds into larger crowds.
+
+```{r}
+vec_count(small_attend_df$bobblehead)
+vec_count(med_attend_df$bobblehead)
+vec_count(large_attend_df$bobblehead)
+```
+Every bobblehead giveaway game produced a large attendance. It would most definitely 
+be appropriate to offer more bobblehead giveaways.
+
+
+
+
+
+
+
+```{r}
+library(ggplot2)
+
+```
+```{r}
+hist(dodgers_df$attend)
+```
+Attendance is normally distributed, and the Dodgers lead the league in attendance.
+
+```{r}
+mean(dodgers_df$attend)
+```
+Any decreases in attendance reflect the pandemic. MLB has yet to bounce back(https://www.baseballamerica.com/stories/mlb-attendance-dipped-significantly-from-pre-pandemic-numbers/).
+
+
+```{r}
+hist(dodgers_df$temp)
+```
+Temperatures are normally distributed, and beautiful.
+
+
+Display the value counts for the variables
+```{r}
+# install.packages('vctrs')
+library(vctrs)
+vec_count(dodgers_df$month)
+
+```
+
+
+```{r}
+vec_count(dodgers_df$day)
+vec_count(dodgers_df$day_of_week)
+vec_count(dodgers_df$opponent)
+vec_count(dodgers_df$temp)
+vec_count(dodgers_df$skies)
+vec_count(dodgers_df$day_night)
+vec_count(dodgers_df$cap)
+vec_count(dodgers_df$shirt)
+vec_count(dodgers_df$fireworks)
+vec_count(dodgers_df$bobblehead)
+```
+
+Create dummy variables
+```{r}
+# install.packages('fastDummies')
+library(fastDummies)
+dodgers_dummies <- dummy_cols(dodgers_df)
+head(dodgers_dummies)
+dodgers_dummies <- subset(dodgers_dummies, select = -c(month, day_of_week, opponent,
+                                                       skies, day_night, cap, shirt,
+                                                       fireworks, bobblehead))
+head(dodgers_dummies)
+```
+
+Scale data
+```{r}
+dodgers_scaled <- scale(dodgers_dummies)
+head(dodgers_scaled)
+```
+
+Perform PCA on data
+```{r warning=FALSE}
+#install.packages("corrr")
+library('corrr')
+# install.packages("ggcorrplot")
+library(ggcorrplot)
+
+```
+
+```{r}
+corr_matrix <- cor(dodgers_scaled)
+ggcorrplot(corr_matrix)
+```
+
+```{r}
+data.pca <- princomp(corr_matrix)
+summary(data.pca)
+```
+The components do not reach 80% explainability until the 10th component. It may
+be advisable to use multiple features because there does not exist features that 
+appropriately predict using a deminimus number of features.
+
+```{r}
+data.pca$loadings[, 1:2]
+```
+
+```{r warning=FALSE}
+library(factoextra)
+fviz_eig(data.pca, addlabels = TRUE)
+```
+
+```{r}
+# Graph of the variables
+fviz_pca_var(data.pca, col.var = "black")
+```
+
+```{r}
+fviz_cos2(data.pca, choice = "var", axes = 1:2)
+```
+
+```{r}
+fviz_pca_var(data.pca, col.var = "cos2",
+            gradient.cols = c("black", "orange", "green"),
+            repel = TRUE)
+options(warn = -1)
+```
+Suggest scheduling more Friday night games, with fireworks displays, and give off day on Thursday.
+```{r}
+data.pca$loadings
+
+```
+
+```{r}
+str(data.pca$loadings)
+```
+
+
+```{r}
+data.pca$center
+```
+
+```{r}
+data.pca$n.obs
+```
+
+```{r}
+str(data.pca)
+```
+
+```{r warning=FALSE}
+# install.packages('ggfortify')
+library(ggfortify)
+
+```
+
+```{r}
+dim(dodgers_scaled)
+```
+
+
+```{r}
+data.pca$scores
+```
+
+```{r}
+data.pca$call
+```
+
+```{r warning=FALSE}
+library(factoextra)
+variables <- get_pca_var(data.pca)
+variables
+```
+
+```{r warning=FALSE}
+# install.packages('gridExtra')
+# install.packages('grid')
+library(gridExtra)
+library(grid)
+library(factoextra)
+```
+
+
+```{r}
+# Contributions of variables to PC1
+a<-fviz_contrib(data.pca, choice = "var", axes = 1)
+# Contributions of variables to PC2
+b<-fviz_contrib(data.pca, choice = "var", axes = 2)
+grid.arrange(a,b, ncol=2, top='Contribution of the variables to the first two PCs')
+```
+
+
+
+```{r}
+biplot(data.pca, main = 'Biplot', scale = 0)
+```
+
+Create linear regression on all features
+
+
+```{r}
+linear_model <- lm(dodgers_df$attend ~ dodgers_scaled[, -2])
+summary(linear_model)
+```
+
+
+```{r}
+kmeans <- eclust(dodgers_scaled, k=7)
+```
+
+Compute partial correlations
+```{r warning=FALSE}
+library(ppcor)
+pcor(dodgers_scaled)
+```
+
+```{r warning=FALSE}
+pcor(dodgers_dummies)
+```
+
+
+Summary
+Recommending ways to increase attendance at L.A. Dodgers home games is a 
+particularly vexing issue for several reasons. The Dodgers have led MLB
+in attendance for years, so they are at the top. Moreover, the most common 
+recommendation is to put a winning product on the field, and the Dodgers have done
+just that. Statistically it is highly unlikely to outperform their winning percentages.
+It is highly unlikely that they even match their prior years wins totals. They 
+won 111 and 106 games respectively over the past two years. A 100-win season is an aberration in baseball, let alone accomplishing this feat three years in a row.
+The main declines in attendance across MLB are due to the Covid-19 pandemic. MLB 
+is recovering slowly. The greatest spur to attendance may very well be the time 
+lapsed since the end of the pandemic. Recommendation goals should be small increases
+in attendance. 
+I reduced the problem by creating three dfs including small attendance (less than 35,000),
+medium attendance (between 35,000 and 45,000), and large attendance (more than 45,000).
+Approaching attendance granularly, one can aim to give incremental boosts by comparing 
+a smaller group to a larger group, and suggesting what the larger group includes
+which is missing in the smaller group. While fireworks shows do not figure in large 
+audiences, they do occur in medium audiences, and not small ones. I recommend more 
+fireworks displays for the expected boost it gives in attendance. Likewise, bobblehead giveaways only occurred on large crowd days. Adding more bobblehead giveaway days should add more large attendance days. There is not data on bat giveaways, but I recommend 
+bat days because they have historically brought out the fans. 
+The PCA produced two components which account for 29% of the variance. These two components suggest scheduling as many Friday night games as feasible. Also fireworks shows are 
+positively correlated with attendance, so one would expect more large attendances 
+with more fireworks shows. 
+
+References
+McDonald, Mark and Rascher, Daniel A., "Does Bat Day Make Cents? The Effect of Promotions on the Demand for Major League Baseball" (2000). Kinesiology (Formerly Exercise and Sport Science). 1.
+https://repository.usfca.edu/ess/1
+Cooper, JJ (2022) "MLB Attendance Dipped Significantly From Pre-Pandemic Numbers
+" Baseball America, retrieved 3/30/2023 from: https://www.baseballamerica.com/stories/mlb-attendance-dipped-significantly-from-pre-pandemic-numbers/
